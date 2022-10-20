@@ -30,21 +30,38 @@ const (
 	NotFound = `<!DOCTYPE html>
 <html>
 <head>
-<title>Not Found</title>
+<meta charset="utf-8"> 
+<title>页面竟然找不到了！</title>
 <style>
-    body {
-        width: 35em;
-        margin: 0 auto;
-        font-family: Tahoma, Verdana, Arial, sans-serif;
-    }
+div {
+    background-color: lightgrey;
+    width: 300px;
+    border: 2px solid red;
+    padding: 25px;
+    margin: 25px;
+}
+	#rcorners1 {
+    border-radius: 16px;
+    background: #0111;
+    padding: 20px; 
+    width: 400px;
+}
+
+	h1{
+		font-size:64px;
+	}	
 </style>
 </head>
 <body>
-<h1>The page you requested was not found.</h1>
-<p>Sorry, the page you are looking for is currently unavailable.<br/>
-Please try again later.</p>
-<p>The server is powered by <a href="https://github.com/fatedier/frp">frp</a>.</p>
-<p><em>Faithfully yours, frp.</em></p>
+<center>
+
+<h1>🥵404!</h1>
+<p id="rcorners1"><a>嗯，是有些事儿发生了.<br>
+但我什么都不知道...<br>今天还没开始更新...<br>
+应该很快就有新的出来了</a></p>
+
+
+</center>
 </body>
 </html>
 `
