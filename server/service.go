@@ -28,7 +28,7 @@ import (
 
 	"github.com/fatedier/golib/net/mux"
 	fmux "github.com/hashicorp/yamux"
-	quic "github.com/lucas-clemente/quic-go"
+	quic "github.com/quic-go/quic-go"
 
 	"github.com/fatedier/frp/assets"
 	"github.com/fatedier/frp/pkg/auth"
@@ -293,7 +293,7 @@ func NewService(cfg config.ServerCommonConf) (svr *Service, err error) {
 	if cfg.BindUDPPort > 0 {
 		var nc *nathole.Controller
 		address := net.JoinHostPort(cfg.BindAddr, strconv.Itoa(cfg.BindUDPPort))
-		nc, err = nathole.NewController(address)
+		nc, err = nathole.NewController(address, []byte(cfg.Token))
 		if err != nil {
 			err = fmt.Errorf("create nat hole controller error, %v", err)
 			return

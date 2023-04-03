@@ -1,9 +1,8 @@
 ### New
 
-* Add `oidc_scope` parameter to frpc when `authentication_method = oidc`.
-* Support quic protocol between frpc and frps.
+* The `httpconnect` type in `tcpmux` now supports authentication through the parameters `http_user` and `http_pwd`.
 
+### Improved
 
-### Improve
-
-* Upgrade oidc and oauth2 package which is forward compatible.
+* The web framework has been upgraded to vue3 + element-plus, and the dashboard has added some information display and supports dark mode.
+* The e2e testing has been switched to ginkgo v2.
