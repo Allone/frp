@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 
@@ -275,14 +276,15 @@ var _ = ginkgo.Describe("[Feature: Basic]", func() {
 		})
 	})
 
-	ginkgo.Describe("STCP && SUDP", func() {
-		types := []string{"stcp", "sudp"}
+	ginkgo.Describe("STCP && SUDP && XTCP", func() {
+		types := []string{"stcp", "sudp", "xtcp"}
 		for _, t := range types {
 			proxyType := t
 			ginkgo.It(fmt.Sprintf("Expose echo server with %s", strings.ToUpper(proxyType)), func() {
 				serverConf := consts.DefaultServerConfig
-				clientServerConf := consts.DefaultClientConfig
-				clientVisitorConf := consts.DefaultClientConfig
+				clientServerConf := consts.DefaultClientConfig + "\nuser = user1"
+				clientVisitorConf := consts.DefaultClientConfig + "\nuser = user1"
+				clientUser2VisitorConf := consts.DefaultClientConfig + "\nuser = user2"
 
 				localPortName := ""
 				protocol := "tcp"
@@ -293,6 +295,9 @@ var _ = ginkgo.Describe("[Feature: Basic]", func() {
 				case "sudp":
 					localPortName = framework.UDPEchoServerPort
 					protocol = "udp"
+				case "xtcp":
+					localPortName = framework.TCPEchoServerPort
+					protocol = "tcp"
 				}
 
 				correctSK := "abc"
@@ -319,11 +324,14 @@ var _ = ginkgo.Describe("[Feature: Basic]", func() {
 				}
 
 				tests := []struct {
-					proxyName    string
-					bindPortName string
-					visitorSK    string
-					extraConfig  string
-					expectError  bool
+					proxyName          string
+					bindPortName       string
+					visitorSK          string
+					commonExtraConfig  string
+					proxyExtraConfig   string
+					visitorExtraConfig string
+					expectError        bool
+					user2              bool
 				}{
 					{
 						proxyName:    "normal",
@@ -331,22 +339,22 @@ var _ = ginkgo.Describe("[Feature: Basic]", func() {
 						visitorSK:    correctSK,
 					},
 					{
-						proxyName:    "with-encryption",
-						bindPortName: port.GenName("WithEncryption"),
-						visitorSK:    correctSK,
-						extraConfig:  "use_encryption = true",
+						proxyName:         "with-encryption",
+						bindPortName:      port.GenName("WithEncryption"),
+						visitorSK:         correctSK,
+						commonExtraConfig: "use_encryption = true",
 					},
 					{
-						proxyName:    "with-compression",
-						bindPortName: port.GenName("WithCompression"),
-						visitorSK:    correctSK,
-						extraConfig:  "use_compression = true",
+						proxyName:         "with-compression",
+						bindPortName:      port.GenName("WithCompression"),
+						visitorSK:         correctSK,
+						commonExtraConfig: "use_compression = true",
 					},
 					{
 						proxyName:    "with-encryption-and-compression",
 						bindPortName: port.GenName("WithEncryptionAndCompression"),
 						visitorSK:    correctSK,
-						extraConfig: `
+						commonExtraConfig: `
 						use_encryption = true
 						use_compression = true
 						`,
@@ -357,20 +365,54 @@ var _ = ginkgo.Describe("[Feature: Basic]", func() {
 						visitorSK:    wrongSK,
 						expectError:  true,
 					},
+					{
+						proxyName:          "allowed-user",
+						bindPortName:       port.GenName("AllowedUser"),
+						visitorSK:          correctSK,
+						proxyExtraConfig:   "allow_users = another, user2",
+						visitorExtraConfig: "server_user = user1",
+						user2:              true,
+					},
+					{
+						proxyName:          "not-allowed-user",
+						bindPortName:       port.GenName("NotAllowedUser"),
+						visitorSK:          correctSK,
+						proxyExtraConfig:   "allow_users = invalid",
+						visitorExtraConfig: "server_user = user1",
+						expectError:        true,
+					},
+					{
+						proxyName:          "allow-all",
+						bindPortName:       port.GenName("AllowAll"),
+						visitorSK:          correctSK,
+						proxyExtraConfig:   "allow_users = *",
+						visitorExtraConfig: "server_user = user1",
+						user2:              true,
+					},
 				}
 
 				// build all client config
 				for _, test := range tests {
-					clientServerConf += getProxyServerConf(test.proxyName, test.extraConfig) + "\n"
+					clientServerConf += getProxyServerConf(test.proxyName, test.commonExtraConfig+"\n"+test.proxyExtraConfig) + "\n"
 				}
 				for _, test := range tests {
-					clientVisitorConf += getProxyVisitorConf(test.proxyName, test.bindPortName, test.visitorSK, test.extraConfig) + "\n"
+					config := getProxyVisitorConf(
+						test.proxyName, test.bindPortName, test.visitorSK, test.commonExtraConfig+"\n"+test.visitorExtraConfig,
+					) + "\n"
+					if test.user2 {
+						clientUser2VisitorConf += config
+					} else {
+						clientVisitorConf += config
+					}
 				}
 				// run frps and frpc
-				f.RunProcesses([]string{serverConf}, []string{clientServerConf, clientVisitorConf})
+				f.RunProcesses([]string{serverConf}, []string{clientServerConf, clientVisitorConf, clientUser2VisitorConf})
 
 				for _, test := range tests {
 					framework.NewRequestExpect(f).
+						RequestModify(func(r *request.Request) {
+							r.Timeout(3 * time.Second)
+						}).
 						Protocol(protocol).
 						PortName(test.bindPortName).
 						Explain(test.proxyName).
